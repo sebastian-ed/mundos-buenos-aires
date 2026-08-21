@@ -68,7 +68,7 @@
             <h2>Buscá con criterio, no con ruido.</h2>
           </div>
           <div class="col-lg-5">
-            <p class="section-copy">Combiná búsqueda, categoría, barrio y comuna. El catálogo se reorganiza por barrio y el mapa acompaña los mismos filtros.</p>
+            <p class="section-copy">Combiná búsqueda, categoría, barrio y comuna. Los mismos filtros actualizan el índice, el mapa y el directorio.</p>
           </div>
         </div>
 
@@ -107,30 +107,6 @@
             <button class="text-action" id="clearFilters" type="button">Limpiar filtros</button>
           </div>
         </div>
-
-        <div class="catalog-toolbar">
-          <div>
-            <span class="status-dot" id="dataStatusDot"></span>
-            <span id="dataStatus">Cargando catálogo…</span>
-          </div>
-          <div class="view-switch" aria-label="Cambiar vista">
-            <button type="button" class="active" data-view="catalog">Directorio</button>
-            <button type="button" data-view="map">Mapa</button>
-          </div>
-        </div>
-
-        <div id="loadingState" class="loading-state" aria-live="polite">
-          <div class="loading-line"></div><div class="loading-line short"></div>
-          <p>Ordenando la ciudad…</p>
-        </div>
-
-        <div id="emptyState" class="empty-state d-none">
-          <p class="eyebrow">Sin coincidencias</p>
-          <h3>No encontramos espacios con esa combinación.</h3>
-          <button class="secondary-button" id="emptyReset" type="button">Volver al catálogo completo</button>
-        </div>
-
-        <div id="catalogView" class="catalog-view d-none" aria-live="polite"></div>
       </div>
     </section>
 
@@ -156,13 +132,63 @@
             <h2>La cultura también se entiende por proximidad.</h2>
           </div>
           <div class="col-lg-5">
-            <p class="section-copy">El mapa replica los filtros del directorio. Al seleccionar un punto vas a ver nombre, categoría, barrio, dirección y accesos disponibles.</p>
+            <p class="section-copy">Filtrá directamente por barrio o categoría. Cada pin identifica el tipo de espacio y el mapa se sincroniza con el directorio.</p>
           </div>
+        </div>
+        <div class="map-filterbar" aria-label="Filtros rápidos del mapa">
+          <div class="map-filter-field">
+            <label for="mapNeighborhoodFilter">Barrio</label>
+            <select id="mapNeighborhoodFilter"><option value="">Todos los barrios</option></select>
+          </div>
+          <div class="map-filter-field">
+            <label for="mapCategoryFilter">Categoría</label>
+            <select id="mapCategoryFilter"><option value="">Todas las categorías</option></select>
+          </div>
+          <button type="button" class="map-clear-button" id="mapClearFilters">Ver todo el mapa</button>
         </div>
         <div class="map-frame">
           <div id="culturalMap" aria-label="Mapa de espacios culturales de Buenos Aires"></div>
           <div class="map-summary"><strong id="mapCount">—</strong><span>espacios con ubicación</span></div>
         </div>
+        <div class="map-legend" id="mapLegend" aria-label="Referencias de categorías"></div>
+      </div>
+    </section>
+
+    <section class="catalog-section" id="directorio">
+      <div class="container-fluid site-shell">
+        <div class="catalog-section-heading row align-items-end g-4">
+          <div class="col-lg-7">
+            <p class="eyebrow">Desglose por barrio</p>
+            <h2>Todos los espacios, barrio por barrio.</h2>
+          </div>
+          <div class="col-lg-5">
+            <p class="section-copy">El detalle respeta los filtros seleccionados arriba y permite abrir cada espacio directamente en el mapa.</p>
+          </div>
+        </div>
+
+        <div class="catalog-toolbar">
+          <div>
+            <span class="status-dot" id="dataStatusDot"></span>
+            <span id="dataStatus">Cargando catálogo…</span>
+          </div>
+          <div class="view-switch" aria-label="Accesos rápidos">
+            <button type="button" class="active" data-view="catalog">Directorio</button>
+            <button type="button" data-view="map">Mapa</button>
+          </div>
+        </div>
+
+        <div id="loadingState" class="loading-state" aria-live="polite">
+          <div class="loading-line"></div><div class="loading-line short"></div>
+          <p>Ordenando la ciudad…</p>
+        </div>
+
+        <div id="emptyState" class="empty-state d-none">
+          <p class="eyebrow">Sin coincidencias</p>
+          <h3>No encontramos espacios con esa combinación.</h3>
+          <button class="secondary-button" id="emptyReset" type="button">Volver al catálogo completo</button>
+        </div>
+
+        <div id="catalogView" class="catalog-view d-none" aria-live="polite"></div>
       </div>
     </section>
 

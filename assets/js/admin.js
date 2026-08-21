@@ -11,7 +11,8 @@
     page: 0,
     totalFiltered: 0,
     deleteTarget: null,
-    editSpace: null
+    editSpace: null,
+    expectedTotal: null
   };
 
   const els = {};
@@ -40,7 +41,7 @@
   function cacheElements() {
     const ids = [
       'loginSection','dashboardSection','loginForm','loginEmail','loginPassword','loginFeedback','adminUserBox','adminEmail','logoutBtn',
-      'seedBtn','exportBtn','newSpaceBtn','adminSpaceCount','adminActiveCount','adminCategoryCount','adminNeighborhoodCount',
+      'seedBtn','exportBtn','newSpaceBtn','adminSpaceCount','adminActiveCount','adminCategoryCount','adminNeighborhoodCount','importStatus',
       'spacesTab','categoriesTab','adminSearch','adminCategoryFilter','adminNeighborhoodFilter','adminStatusFilter','spacesTableBody','adminPageInfo','prevPage','nextPage',
       'newCategoryBtn','categoriesList','spaceForm','spaceId','spaceName','spaceCategory','spaceSubcategory','spaceNeighborhood','spaceCommune','spaceAddress','spaceLatitude','spaceLongitude','spacePhone','spaceEmail','spaceWebsite','spaceInstagram','spaceFacebook','spaceImage','spaceDescription','spaceTag','spaceRooms','spaceCapacity','spaceActive','spaceFeatured','spaceFeedback','spaceModalTitle',
       'categoryForm','categoryId','categoryName','categoryFeedback','categoryModalTitle','deleteMessage','deleteConfirmInput','deleteFeedback','confirmDeleteBtn','adminToastBody'
@@ -127,7 +128,7 @@
   }
 
   async function refreshAll() {
-    await Promise.all([loadCategories(), loadSlimSpaces()]);
+    await Promise.all([loadCategories(), loadSlimSpaces(), loadBaseMeta()]);
     populateAdminFilters();
     updateStats();
     renderCategories();
@@ -138,6 +139,17 @@
     const { data, error } = await client.from('categories').select('*').order('name');
     if (error) throw error;
     state.categories = data || [];
+  }
+
+  async function loadBaseMeta() {
+    if (state.expectedTotal) return;
+    try {
+      const response = await fetch('data/meta.json', { cache: 'no-store' });
+      if (!response.ok) return;
+      const meta = await response.json();
+      const total = Number(meta?.total_spaces);
+      if (Number.isFinite(total) && total > 0) state.expectedTotal = total;
+    } catch (_) {}
   }
 
   async function loadSlimSpaces() {
@@ -158,6 +170,14 @@
     els.adminActiveCount.textContent = formatNumber(state.slimSpaces.filter(x => x.is_active).length);
     els.adminCategoryCount.textContent = formatNumber(state.categories.length);
     els.adminNeighborhoodCount.textContent = formatNumber(new Set(state.slimSpaces.map(x => x.neighborhood).filter(Boolean)).size);
+
+    if (els.importStatus && state.expectedTotal) {
+      const missing = Math.max(0, state.expectedTotal - state.slimSpaces.length);
+      els.importStatus.classList.toggle('d-none', missing === 0);
+      els.importStatus.textContent = missing
+        ? `Base incompleta: hay ${formatNumber(state.slimSpaces.length)} de ${formatNumber(state.expectedTotal)} espacios. Volvé a usar “Importar base inicial”: ahora la carga ignora coordenadas NA y completa los registros faltantes sin duplicar los existentes.`
+        : '';
+    }
   }
 
   function populateAdminFilters() {
@@ -383,33 +403,33 @@
       const mapped = records.map(r => ({
         source_fid: r.source_fid,
         category_id: categoryMap.get(r.category),
-        subcategory: r.subcategory,
+        subcategory: nullableDatasetText(r.subcategory),
         name: r.name,
-        secondary_function: r.secondary_function,
-        programming: r.programming,
-        branch: r.branch,
-        room: r.room,
-        street: r.street,
-        street_number: r.street_number == null ? null : String(r.street_number),
-        neighborhood: r.neighborhood,
-        commune: r.commune,
-        address: r.address,
-        longitude: r.longitude,
-        latitude: r.latitude,
-        phone: r.phone == null ? null : String(r.phone),
-        email: r.email,
-        website: r.website,
-        facebook: r.facebook,
-        twitter: r.twitter,
-        instagram: r.instagram,
-        camera_1: r.camera_1,
-        camera_2: r.camera_2,
-        networks: r.networks,
-        culture_point: r.culture_point,
-        other_networks: r.other_networks,
+        secondary_function: nullableDatasetText(r.secondary_function),
+        programming: nullableDatasetText(r.programming),
+        branch: nullableDatasetText(r.branch),
+        room: nullableDatasetText(r.room),
+        street: nullableDatasetText(r.street),
+        street_number: nullableDatasetText(r.street_number),
+        neighborhood: nullableDatasetText(r.neighborhood),
+        commune: nullableDatasetText(r.commune),
+        address: nullableDatasetText(r.address),
+        longitude: toNullableNumber(r.longitude),
+        latitude: toNullableNumber(r.latitude),
+        phone: nullableDatasetText(r.phone),
+        email: nullableDatasetText(r.email),
+        website: nullableDatasetText(r.website),
+        facebook: nullableDatasetText(r.facebook),
+        twitter: nullableDatasetText(r.twitter),
+        instagram: nullableDatasetText(r.instagram),
+        camera_1: nullableDatasetText(r.camera_1),
+        camera_2: nullableDatasetText(r.camera_2),
+        networks: nullableDatasetText(r.networks),
+        culture_point: nullableDatasetText(r.culture_point),
+        other_networks: nullableDatasetText(r.other_networks),
         room_count: toNullableNumber(r.room_count),
         capacity_total: toNullableNumber(r.capacity_total),
-        tag: r.tag,
+        tag: nullableDatasetText(r.tag),
         is_active: true
       }));
 
@@ -459,6 +479,13 @@
   function nullableText(value) {
     const clean = String(value || '').trim();
     return clean || null;
+  }
+
+  function nullableDatasetText(value) {
+    if (value == null) return null;
+    const clean = String(value).trim();
+    if (!clean || /^(na|n\/a|s\/d|sin dato|null|undefined)$/i.test(clean) || /^comuna\s+na$/i.test(clean)) return null;
+    return clean;
   }
 
   function showToast(message) {

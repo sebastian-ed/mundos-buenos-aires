@@ -12,8 +12,8 @@ Web app estática + Supabase para explorar y administrar espacios culturales de 
 - Gestión de categorías.
 - Importación inicial del dataset desde el propio panel admin.
 - Exportación JSON para backup.
-- Asistente cultural con IA mediante una Supabase Edge Function; la clave de OpenAI nunca se expone en el navegador.
-- Límite diario básico del chat por hash de IP.
+- Asistente cultural con dos modos: **local sin costo de API** o **OpenAI** mediante una Supabase Edge Function.
+- En modo OpenAI, la clave nunca se expone en el navegador y existe un límite diario básico por hash de IP.
 - Fallback local: `index.html` funciona con `data/espacios-culturales.json` aunque Supabase todavía no esté configurado.
 
 El archivo base incluido contiene **3.053 espacios**, **16 categorías**, **49 barrios** y **3.031 registros con coordenadas**.
@@ -80,7 +80,8 @@ Editar `assets/js/config.js`:
 window.APP_CONFIG = {
   SUPABASE_URL: 'https://xxxxxxxx.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_...',
-  CHAT_FUNCTION_NAME: 'cultural-assistant'
+  CHAT_FUNCTION_NAME: 'cultural-assistant',
+  CHAT_MODE: 'local' // 'local' = sin API paga; 'openai' = Edge Function + OpenAI
 };
 ```
 
@@ -100,13 +101,17 @@ La importación:
 - crea/actualiza las categorías del Excel;
 - carga los espacios en lotes;
 - usa `source_fid` para evitar duplicados si se ejecuta nuevamente;
-- conserva los campos disponibles del archivo original.
+- conserva los campos disponibles del archivo original;
+- convierte coordenadas no numéricas como `NA` en `null`, evitando que un lote completo falle;
+- puede ejecutarse nuevamente sobre una base parcial: actualiza por `source_fid` y completa los faltantes sin duplicarlos.
 
 El catálogo público seguirá mostrando el JSON local si Supabase está vacío o temporalmente no responde.
 
-## 5. Activar el asistente con IA
+## 5. Asistente cultural: modo local o OpenAI
 
-La integración está en `supabase/functions/cultural-assistant/index.ts`.
+Por defecto `assets/js/config.js` viene con `CHAT_MODE: 'local'`. En ese modo el chat consulta el catálogo ya cargado, detecta barrios/categorías y arma respuestas sin llamar a un modelo externo. **No genera consumo de OpenAI.**
+
+Si querés respuestas generativas más flexibles, cambiá a `CHAT_MODE: 'openai'`. La integración paga está en `supabase/functions/cultural-assistant/index.ts`.
 
 ### Con Supabase CLI
 

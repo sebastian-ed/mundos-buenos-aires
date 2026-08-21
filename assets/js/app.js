@@ -8,6 +8,25 @@
     communeSort
   } = window.Trama;
 
+  const CATEGORY_MARKERS = {
+    'MUSEO': { glyph: '🏛', cls: 'museum' },
+    'GALERIA DE ARTE': { glyph: '▣', cls: 'gallery' },
+    'SALA DE TEATRO': { glyph: '🎭', cls: 'theater' },
+    'BIBLIOTECA': { glyph: '📚', cls: 'library' },
+    'LIBRERIA': { glyph: '📖', cls: 'bookstore' },
+    'CENTRO CULTURAL': { glyph: '✦', cls: 'cultural-center' },
+    'CLUB DE MUSICA EN VIVO': { glyph: '♪', cls: 'music' },
+    'CLUB DE MUSICA EN VIVO - NUEVO': { glyph: '♪', cls: 'music' },
+    'SALA DE CINE': { glyph: '▶', cls: 'cinema' },
+    'ANFITEATRO': { glyph: '◒', cls: 'amphitheater' },
+    'MONUMENTOS Y LUGARES HISTORICOS': { glyph: '◆', cls: 'historic' },
+    'ESPACIO DE FORMACION': { glyph: '🎓', cls: 'training' },
+    'ESPACIO FERIAL': { glyph: '◇', cls: 'fair' },
+    'BAR': { glyph: '●', cls: 'bar' },
+    'DISQUERIA': { glyph: '◎', cls: 'records' },
+    'CALESITA': { glyph: '♞', cls: 'carousel' }
+  };
+
   const state = {
     all: [],
     filtered: [],
@@ -38,6 +57,7 @@
       initMap();
       applyFilters();
       updateDataStatus();
+      exposeCatalog();
     } catch (error) {
       console.error(error);
       els.loadingState.innerHTML = '<p>No se pudo cargar el catálogo. Revisá la configuración o serví el proyecto desde un servidor web.</p>';
@@ -65,6 +85,10 @@
       heroNeighborhoods: document.getElementById('heroNeighborhoods'),
       heroCategories: document.getElementById('heroCategories'),
       mapCount: document.getElementById('mapCount'),
+      mapNeighborhoodFilter: document.getElementById('mapNeighborhoodFilter'),
+      mapCategoryFilter: document.getElementById('mapCategoryFilter'),
+      mapClearFilters: document.getElementById('mapClearFilters'),
+      mapLegend: document.getElementById('mapLegend'),
       currentYear: document.getElementById('currentYear')
     });
   }
@@ -75,6 +99,20 @@
     [els.categoryFilter, els.neighborhoodFilter, els.communeFilter, els.sortFilter].forEach(el => el.addEventListener('change', applyFilters));
     els.clearFilters.addEventListener('click', resetFilters);
     els.emptyReset.addEventListener('click', resetFilters);
+
+    els.mapNeighborhoodFilter?.addEventListener('change', () => {
+      els.neighborhoodFilter.value = els.mapNeighborhoodFilter.value;
+      applyFilters();
+    });
+    els.mapCategoryFilter?.addEventListener('change', () => {
+      els.categoryFilter.value = els.mapCategoryFilter.value;
+      applyFilters();
+    });
+    els.mapClearFilters?.addEventListener('click', () => {
+      els.neighborhoodFilter.value = '';
+      els.categoryFilter.value = '';
+      applyFilters();
+    });
 
     els.catalogView.addEventListener('click', e => {
       const more = e.target.closest('[data-more-neighborhood]');
@@ -92,7 +130,8 @@
       if (!button) return;
       els.neighborhoodFilter.value = button.dataset.neighborhood;
       applyFilters();
-      document.getElementById('explorar').scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('mapa').scrollIntoView({ behavior: 'smooth' });
+      setTimeout(() => state.map?.invalidateSize(), 450);
     });
 
     document.querySelectorAll('[data-view]').forEach(button => {
@@ -102,7 +141,7 @@
           document.getElementById('mapa').scrollIntoView({ behavior: 'smooth' });
           setTimeout(() => state.map?.invalidateSize(), 450);
         } else {
-          document.getElementById('explorar').scrollIntoView({ behavior: 'smooth' });
+          document.getElementById('directorio').scrollIntoView({ behavior: 'smooth' });
         }
       });
     });
@@ -111,16 +150,33 @@
   function normalizeRecord(record) {
     return {
       ...record,
-      name: record.name || record.establishment || '',
-      category: record.category || record.categories?.name || 'OTROS',
-      neighborhood: record.neighborhood || 'SIN BARRIO',
-      commune: record.commune || '',
-      address: record.address || '',
+      name: cleanText(record.name || record.establishment || ''),
+      category: cleanText(record.category || record.categories?.name || 'OTROS'),
+      neighborhood: normalizeNeighborhood(record.neighborhood),
+      commune: normalizeCommune(record.commune),
+      address: cleanText(record.address || ''),
       latitude: toFiniteNumber(record.latitude),
       longitude: toFiniteNumber(record.longitude),
       capacity_total: toFiniteNumber(record.capacity_total),
       room_count: toFiniteNumber(record.room_count)
     };
+  }
+
+  function cleanText(value) {
+    if (value == null) return '';
+    const text = String(value).trim();
+    return /^(na|n\/a|null|undefined)$/i.test(text) ? '' : text;
+  }
+
+  function normalizeNeighborhood(value) {
+    const clean = cleanText(value);
+    return clean || 'SIN BARRIO';
+  }
+
+  function normalizeCommune(value) {
+    const clean = cleanText(value);
+    if (!clean || /^COMUNA\s+NA$/i.test(clean)) return '';
+    return clean;
   }
 
   function toFiniteNumber(value) {
@@ -130,16 +186,25 @@
 
   function configureFilters() {
     const categories = [...new Set(state.all.map(x => x.category).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
-    const neighborhoods = [...new Set(state.all.map(x => x.neighborhood).filter(Boolean))].sort((a,b) => a.localeCompare(b,'es'));
+    const neighborhoods = [...new Set(state.all.map(x => x.neighborhood).filter(n => n && n !== 'SIN BARRIO'))].sort((a,b) => a.localeCompare(b,'es'));
     const communes = [...new Set(state.all.map(x => x.commune).filter(Boolean))].sort(communeSort);
     fillSelect(els.categoryFilter, categories, 'Todas');
     fillSelect(els.neighborhoodFilter, neighborhoods, 'Todos');
     fillSelect(els.communeFilter, communes, 'Todas');
+    fillSelect(els.mapCategoryFilter, categories, 'Todas las categorías');
+    fillSelect(els.mapNeighborhoodFilter, neighborhoods, 'Todos los barrios');
+    renderMapLegend(categories);
   }
 
   function fillSelect(select, values, allLabel) {
+    if (!select) return;
     const first = `<option value="">${allLabel}</option>`;
-    select.innerHTML = first + values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+    select.innerHTML = first + values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(toTitleCase(v))}</option>`).join('');
+  }
+
+  function syncMapFilters() {
+    if (els.mapCategoryFilter) els.mapCategoryFilter.value = els.categoryFilter.value;
+    if (els.mapNeighborhoodFilter) els.mapNeighborhoodFilter.value = els.neighborhoodFilter.value;
   }
 
   function buildSearchHaystack(item) {
@@ -167,6 +232,8 @@
       return terms.every(term => haystack.includes(term));
     });
 
+    syncMapFilters();
+    renderNeighborhoodIndex();
     renderCatalog();
     renderMapMarkers();
     els.resultCount.textContent = formatNumber(state.filtered.length);
@@ -189,6 +256,9 @@
     const copy = [...items];
     if (mode === 'capacity') {
       return copy.sort((a,b) => (b.capacity_total || -1) - (a.capacity_total || -1) || a.name.localeCompare(b.name,'es'));
+    }
+    if (mode === 'neighborhood') {
+      return copy.sort((a,b) => a.neighborhood.localeCompare(b.neighborhood,'es') || a.name.localeCompare(b.name,'es'));
     }
     return copy.sort((a,b) => a.name.localeCompare(b.name,'es'));
   }
@@ -242,17 +312,23 @@
   }
 
   function renderNeighborhoodIndex() {
+    const source = state.filtered.length || hasActiveFilters() ? state.filtered : state.all;
     const counts = new Map();
-    state.all.forEach(item => counts.set(item.neighborhood, (counts.get(item.neighborhood) || 0) + 1));
+    source.forEach(item => counts.set(item.neighborhood, (counts.get(item.neighborhood) || 0) + 1));
     els.neighborhoodLinks.innerHTML = [...counts.entries()]
+      .filter(([name]) => Boolean(name) && name !== 'SIN BARRIO')
       .sort((a,b) => a[0].localeCompare(b[0],'es'))
-      .map(([name,count]) => `<button class="neighborhood-link" type="button" data-neighborhood="${escapeHtml(name)}"><strong>${escapeHtml(toTitleCase(name))}</strong><span>${formatNumber(count)}</span></button>`)
+      .map(([name,count]) => `<button class="neighborhood-link${els.neighborhoodFilter.value === name ? ' selected' : ''}" type="button" data-neighborhood="${escapeHtml(name)}"><strong>${escapeHtml(toTitleCase(name))}</strong><span>${formatNumber(count)}</span></button>`)
       .join('');
+  }
+
+  function hasActiveFilters() {
+    return Boolean(els.searchInput.value.trim() || els.categoryFilter.value || els.neighborhoodFilter.value || els.communeFilter.value);
   }
 
   function updateHeroStats() {
     els.heroSpaces.textContent = formatNumber(state.all.length);
-    els.heroNeighborhoods.textContent = formatNumber(new Set(state.all.map(x => x.neighborhood).filter(Boolean)).size);
+    els.heroNeighborhoods.textContent = formatNumber(new Set(state.all.map(x => x.neighborhood).filter(n => n && n !== 'SIN BARRIO')).size);
     els.heroCategories.textContent = formatNumber(new Set(state.all.map(x => x.category).filter(Boolean)).size);
   }
 
@@ -283,6 +359,21 @@
     state.mapReady = true;
   }
 
+  function markerSpec(category) {
+    return CATEGORY_MARKERS[category] || { glyph: '•', cls: 'other' };
+  }
+
+  function categoryMarkerIcon(category) {
+    const spec = markerSpec(category);
+    return L.divIcon({
+      className: 'trama-category-icon',
+      html: `<div class="category-pin pin-${spec.cls}" title="${escapeHtml(toTitleCase(category || 'Espacio cultural'))}"><span>${escapeHtml(spec.glyph)}</span></div>`,
+      iconSize: [36, 44],
+      iconAnchor: [18, 42],
+      popupAnchor: [0, -38]
+    });
+  }
+
   function renderMapMarkers() {
     if (!state.mapReady || !state.markerLayer) return;
     state.markerLayer.clearLayers();
@@ -292,7 +383,7 @@
     state.filtered.forEach(item => {
       if (!Number.isFinite(item.latitude) || !Number.isFinite(item.longitude)) return;
       const key = String(item.id || item.source_fid || `${item.name}-${item.latitude}-${item.longitude}`);
-      const marker = L.marker([item.latitude, item.longitude]);
+      const marker = L.marker([item.latitude, item.longitude], { icon: categoryMarkerIcon(item.category) });
       const site = safeUrl(item.website);
       marker.bindPopup(`
         <div class="popup-category">${escapeHtml(item.category || 'Espacio cultural')}</div>
@@ -310,9 +401,17 @@
 
     if (markers.length && markers.length < 2000) {
       try { state.map.fitBounds(state.markerLayer.getBounds(), { padding: [30, 30], maxZoom: 15 }); } catch (_) {}
-    } else {
+    } else if (markers.length) {
       state.map.setView([-34.6037, -58.3816], 12);
     }
+  }
+
+  function renderMapLegend(categories) {
+    if (!els.mapLegend) return;
+    els.mapLegend.innerHTML = categories.map(category => {
+      const spec = markerSpec(category);
+      return `<span class="map-legend-item"><i class="legend-dot pin-${spec.cls}">${escapeHtml(spec.glyph)}</i>${escapeHtml(toTitleCase(category))}</span>`;
+    }).join('');
   }
 
   function focusOnMap(key) {
@@ -326,6 +425,14 @@
         marker.openPopup();
       });
     }, 520);
+  }
+
+  function exposeCatalog() {
+    window.TramaCatalog = {
+      getAllSpaces: () => state.all.slice(),
+      getFilteredSpaces: () => state.filtered.slice()
+    };
+    document.dispatchEvent(new CustomEvent('trama:catalog-ready'));
   }
 
   function toTitleCase(value = '') {
