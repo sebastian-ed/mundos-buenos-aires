@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explorador de espacios culturales de la Ciudad de Buenos Aires, organizado por barrios, categorías y mapa.">
+  <meta name="theme-color" content="#171714">
+  <title>Trama Buenos Aires — Mapa cultural</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <header class="site-header" id="top">
+    <nav class="navbar navbar-expand-lg" aria-label="Navegación principal">
+      <div class="container-fluid site-shell">
+        <a class="brand" href="#top" aria-label="Trama Buenos Aires, inicio">
+          <span class="brand-mark">TRAMA</span>
+          <span class="brand-city">BUENOS AIRES</span>
+        </a>
+        <button class="navbar-toggler square-control" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Abrir navegación">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+          <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-4">
+            <li class="nav-item"><a class="nav-link" href="#explorar">Explorar</a></li>
+            <li class="nav-item"><a class="nav-link" href="#barrios">Barrios</a></li>
+            <li class="nav-item"><a class="nav-link" href="#mapa">Mapa</a></li>
+            <li class="nav-item"><button class="nav-link nav-chat-button" id="openChatTop" type="button">Preguntar a Trama</button></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero-section">
+      <div class="hero-image" role="img" aria-label="Avenida 9 de Julio y Obelisco de Buenos Aires"></div>
+      <div class="hero-overlay"></div>
+      <div class="container-fluid site-shell hero-content">
+        <div class="row align-items-end min-vh-75">
+          <div class="col-xl-8 col-lg-9">
+            <p class="eyebrow light">Cultura, barrio por barrio</p>
+            <h1>Una ciudad para recorrer a través de sus espacios culturales.</h1>
+            <p class="hero-lead">Encontrá teatros, museos, bibliotecas, centros culturales, galerías, música, patrimonio y otros espacios de Buenos Aires desde una única vista.</p>
+          </div>
+          <div class="col-xl-4 col-lg-3 d-none d-lg-block">
+            <div class="hero-facts" aria-label="Resumen del catálogo">
+              <div><strong id="heroSpaces">—</strong><span>espacios</span></div>
+              <div><strong id="heroNeighborhoods">—</strong><span>barrios</span></div>
+              <div><strong id="heroCategories">—</strong><span>categorías</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="image-credit">Foto: Omegadeepside / Wikimedia Commons · CC BY-SA 4.0</p>
+    </section>
+
+    <section class="search-section" id="explorar">
+      <div class="container-fluid site-shell">
+        <div class="section-intro row g-4 align-items-end">
+          <div class="col-lg-7">
+            <p class="eyebrow">Directorio cultural</p>
+            <h2>Buscá con criterio, no con ruido.</h2>
+          </div>
+          <div class="col-lg-5">
+            <p class="section-copy">Combiná búsqueda, categoría, barrio y comuna. El catálogo se reorganiza por barrio y el mapa acompaña los mismos filtros.</p>
+          </div>
+        </div>
+
+        <div class="search-console" aria-label="Filtros de espacios culturales">
+          <div class="search-main">
+            <label for="searchInput">Buscar espacio</label>
+            <div class="search-input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.7-4.7m2.2-5.3a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
+              <input id="searchInput" type="search" autocomplete="off" placeholder="Nombre, dirección, etiqueta, categoría…">
+            </div>
+          </div>
+          <div class="filter-grid">
+            <div class="filter-field">
+              <label for="categoryFilter">Categoría</label>
+              <select id="categoryFilter"><option value="">Todas</option></select>
+            </div>
+            <div class="filter-field">
+              <label for="neighborhoodFilter">Barrio</label>
+              <select id="neighborhoodFilter"><option value="">Todos</option></select>
+            </div>
+            <div class="filter-field">
+              <label for="communeFilter">Comuna</label>
+              <select id="communeFilter"><option value="">Todas</option></select>
+            </div>
+            <div class="filter-field">
+              <label for="sortFilter">Orden</label>
+              <select id="sortFilter">
+                <option value="name">Nombre A–Z</option>
+                <option value="neighborhood">Barrio</option>
+                <option value="capacity">Mayor capacidad</option>
+              </select>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <div class="result-count"><strong id="resultCount">—</strong> resultados</div>
+            <button class="text-action" id="clearFilters" type="button">Limpiar filtros</button>
+          </div>
+        </div>
+
+        <div class="catalog-toolbar">
+          <div>
+            <span class="status-dot" id="dataStatusDot"></span>
+            <span id="dataStatus">Cargando catálogo…</span>
+          </div>
+          <div class="view-switch" aria-label="Cambiar vista">
+            <button type="button" class="active" data-view="catalog">Directorio</button>
+            <button type="button" data-view="map">Mapa</button>
+          </div>
+        </div>
+
+        <div id="loadingState" class="loading-state" aria-live="polite">
+          <div class="loading-line"></div><div class="loading-line short"></div>
+          <p>Ordenando la ciudad…</p>
+        </div>
+
+        <div id="emptyState" class="empty-state d-none">
+          <p class="eyebrow">Sin coincidencias</p>
+          <h3>No encontramos espacios con esa combinación.</h3>
+          <button class="secondary-button" id="emptyReset" type="button">Volver al catálogo completo</button>
+        </div>
+
+        <div id="catalogView" class="catalog-view d-none" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="neighborhood-index" id="barrios">
+      <div class="container-fluid site-shell">
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <p class="eyebrow">Índice urbano</p>
+            <h2>Elegí un barrio y empezá por ahí.</h2>
+          </div>
+          <div class="col-lg-8">
+            <div class="neighborhood-links" id="neighborhoodLinks"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="map-section" id="mapa">
+      <div class="container-fluid site-shell">
+        <div class="map-heading row align-items-end g-4">
+          <div class="col-lg-7">
+            <p class="eyebrow">Mapa cultural</p>
+            <h2>La cultura también se entiende por proximidad.</h2>
+          </div>
+          <div class="col-lg-5">
+            <p class="section-copy">El mapa replica los filtros del directorio. Al seleccionar un punto vas a ver nombre, categoría, barrio, dirección y accesos disponibles.</p>
+          </div>
+        </div>
+        <div class="map-frame">
+          <div id="culturalMap" aria-label="Mapa de espacios culturales de Buenos Aires"></div>
+          <div class="map-summary"><strong id="mapCount">—</strong><span>espacios con ubicación</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="assistant-section">
+      <div class="container-fluid site-shell">
+        <div class="assistant-callout">
+          <div>
+            <p class="eyebrow light">Asistente cultural</p>
+            <h2>Preguntá por un barrio, una categoría o una idea de recorrido.</h2>
+            <p>Trama usa la información del catálogo para orientar la búsqueda. Si el dataset no contiene horarios, agenda o precios, te lo va a indicar en lugar de inventarlos.</p>
+          </div>
+          <button class="primary-light-button" id="openChatCta" type="button">Abrir asistente</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container-fluid site-shell">
+      <div class="footer-grid">
+        <div>
+          <div class="brand footer-brand"><span class="brand-mark">TRAMA</span><span class="brand-city">BUENOS AIRES</span></div>
+          <p>Explorador independiente de espacios culturales de la Ciudad de Buenos Aires.</p>
+        </div>
+        <div>
+          <span class="footer-label">Navegación</span>
+          <a href="#explorar">Directorio</a><a href="#barrios">Barrios</a><a href="#mapa">Mapa</a>
+        </div>
+        <div>
+          <span class="footer-label">Administración</span>
+          <a href="admin.html">Ingresar al panel</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span id="currentYear"></span> Trama Buenos Aires</span>
+        <span>Mapa © OpenStreetMap contributors</span>
+      </div>
+    </div>
+  </footer>
+
+  <button class="chat-launcher" id="openChat" type="button" aria-label="Abrir asistente cultural">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v11H9l-5 3v-14Z"/><path d="M8 10h8M8 13h5"/></svg>
+  </button>
+
+  <aside class="chat-drawer" id="chatDrawer" aria-hidden="true" aria-label="Asistente cultural">
+    <div class="chat-header">
+      <div><span class="eyebrow">Asistente cultural</span><h3>Preguntale a Trama</h3></div>
+      <button id="closeChat" type="button" aria-label="Cerrar chat">×</button>
+    </div>
+    <div class="chat-context">
+      <button type="button" data-prompt="¿Qué espacios culturales puedo conocer en Palermo?">Palermo</button>
+      <button type="button" data-prompt="Quiero recorrer museos y galerías. ¿Qué opciones aparecen en el catálogo?">Arte</button>
+      <button type="button" data-prompt="¿Qué puedo hacer culturalmente en San Telmo?">San Telmo</button>
+    </div>
+    <div class="chat-messages" id="chatMessages" aria-live="polite">
+      <div class="message assistant">Decime qué barrio querés recorrer, qué tipo de espacio buscás o qué plan cultural tenés en mente.</div>
+    </div>
+    <form class="chat-form" id="chatForm">
+      <label for="chatInput" class="visually-hidden">Tu pregunta</label>
+      <textarea id="chatInput" rows="2" placeholder="Ej.: ¿Qué puedo hacer en Chacarita si me interesa la música?" required></textarea>
+      <button type="submit">Enviar</button>
+    </form>
+    <p class="chat-note" id="chatNote">Las recomendaciones se basan en los datos disponibles en este catálogo.</p>
+  </aside>
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/core.js"></script>
+  <script src="assets/js/data-service.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/chat.js"></script>
+</body>
+</html>

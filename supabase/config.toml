@@ -1,0 +1,2 @@
+[functions.cultural-assistant]
+verify_jwt = false
